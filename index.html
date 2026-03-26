@@ -151,7 +151,7 @@
         .ai-input-wrapper input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
         .loading-dots:after { content: '.'; animation: dots 1.5s steps(5, end) infinite; }
 
-        /* VIDEO RESPONSIVE CSS (ШИНЭЭР НЭМЭГДСЭН ЗАСВАР) */
+        /* VIDEO RESPONSIVE CSS */
         .video-scroll-container {
             flex: 1;
             overflow-y: auto;
@@ -735,7 +735,7 @@
             }, 800);
         }
 
-        // --- ШИНЭЧИЛЖ ЗАССАН VIDEO MODAL LOGIC ---
+        // --- ШИНЭЧИЛЖ ЗАССАН VIDEO MODAL LOGIC (Профайл бичлэг нэмэгдсэн) ---
         function openVideoModal(moduleTitle) {
             document.getElementById('video-title').innerText = `${moduleTitle} - Заавар бичлэг`;
             const videoContainer = document.getElementById('video-container');
@@ -756,6 +756,8 @@
             
             if (moduleTitle === 'Суурь тохиргоо') {
                 contentHtml = createVideoBlock('', 'https://drive.google.com/file/d/1cW7jtUtneHVDjlL065rFVyA8X_AYRim8/preview');
+            } else if (moduleTitle === 'Профайл') { 
+                contentHtml = createVideoBlock('', 'https://drive.google.com/file/d/1jWxb7njiLKMRPKLhtNVgmoq6iAI3AMQJ/preview');
             } else if (moduleTitle === 'Ажил') {
                 contentHtml =
                     createVideoBlock('<i class="fa-solid fa-list-check"></i> 1. Үндсэн заавар', 'https://drive.google.com/file/d/1ZDXj8pXMtuWj3Vl9h5xOPZEtrC1miDpq/preview') +
