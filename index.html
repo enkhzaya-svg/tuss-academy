@@ -79,6 +79,13 @@
         .nav-hidden { visibility: hidden !important; pointer-events: none; }
         .btn-disabled, button:disabled { opacity: 0.5; background: #e2e8f0 !important; color: #94a3b8 !important; cursor: not-allowed; box-shadow: none !important; transform: none !important; border-color: transparent !important; }
 
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake-anim { animation: shake 0.3s ease-in-out; }
+
         /* LAYOUTS */
         .content-area { display: flex; flex-direction: column; flex-grow: 1; justify-content: center; height: 100%; }
         .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 4vw; align-items: center; height: 100%; }
@@ -153,39 +160,16 @@
 
         /* VIDEO RESPONSIVE CSS */
         .video-scroll-container {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-            padding: 10px;
-            background: #0f172a;
-            border-radius: 16px;
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 25px; padding: 10px; background: #0f172a; border-radius: 16px;
         }
         .video-section-title {
-            color: #bae6fd;
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-align: left;
-            font-family: 'Nunito', sans-serif;
+            color: #bae6fd; font-size: 16px; font-weight: 700; margin-bottom: 10px; text-align: left; font-family: 'Nunito', sans-serif;
         }
         .iframe-wrapper {
-            position: relative;
-            width: 100%;
-            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-            height: 0;
-            overflow: hidden;
-            border-radius: 12px;
-            background: #000;
+            position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; background: #000;
         }
         .iframe-wrapper iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;
         }
 
         /* ROBOT ANIMATION */
@@ -341,6 +325,9 @@
         let currentSlideIndex = 0;
         let totalSlides = 3; 
         let dynamicSlidesGenerated = false;
+        
+        // --- ҮЗСЭН ХИЧЭЭЛИЙГ ХАДГАЛАХ ---
+        let watchedModules = new Set();
 
         document.addEventListener('DOMContentLoaded', () => {
             renderModuleGrid();
@@ -428,23 +415,36 @@
                 btnPrev.classList.remove('nav-hidden');
             }
 
+            // ШААРДЛАГЫН ШАЛГАЛТ (Бичлэг эсвэл онол үзсэн байх ёстой)
+            btnNext.classList.remove('btn-disabled');
+            btnNext.innerHTML = 'Дараах <i class="fa-solid fa-chevron-right"></i>';
+
+            if (currentSlideIndex === 1) {
+                if (!watchedModules.has('Суурь тохиргоо')) {
+                    btnNext.classList.add('btn-disabled');
+                    btnNext.innerHTML = '<i class="fa-solid fa-lock"></i> Бичлэг үзнэ үү';
+                }
+            } else if (currentSlideIndex === 2) {
+                if (currentSelectedModules.length === 0) {
+                    btnNext.classList.add('btn-disabled');
+                    btnNext.innerHTML = 'Эд анги сонгоно уу';
+                }
+            } else if (currentSlideIndex >= 3 && currentSlideIndex < 3 + currentSelectedModules.length) {
+                let modId = currentSelectedModules[currentSlideIndex - 3];
+                if (!watchedModules.has(modId)) {
+                    btnNext.classList.add('btn-disabled');
+                    if (modId === 'diagnosis') {
+                        btnNext.innerHTML = '<i class="fa-solid fa-lock"></i> Онол үзнэ үү';
+                    } else {
+                        btnNext.innerHTML = '<i class="fa-solid fa-lock"></i> Бичлэг үзнэ үү';
+                    }
+                }
+            }
+
             if (dynamicSlidesGenerated && currentSlideIndex === totalSlides - 1) {
                 btnNext.classList.add('nav-hidden');
             } else {
                 btnNext.classList.remove('nav-hidden');
-            }
-
-            if (currentSlideIndex === 2) {
-                if (currentSelectedModules.length === 0) {
-                    btnNext.classList.add('btn-disabled');
-                    btnNext.innerHTML = 'Эд анги сонгоно уу';
-                } else {
-                    btnNext.classList.remove('btn-disabled');
-                    btnNext.innerHTML = 'Дараах <i class="fa-solid fa-chevron-right"></i>';
-                }
-            } else {
-                btnNext.classList.remove('btn-disabled');
-                btnNext.innerHTML = 'Дараах <i class="fa-solid fa-chevron-right"></i>';
             }
 
             renderProgressDots();
@@ -487,7 +487,14 @@
         }
 
         function nextSlide() {
-            if (currentSlideIndex === 2 && currentSelectedModules.length === 0) return alert("Та дор хаяж 1 эд анги сонгох шаардлагатай!");
+            const btnNext = document.getElementById('btn-next');
+            if (btnNext.classList.contains('btn-disabled')) {
+                // Товч түгжигдсэн үед салганах анимаци
+                btnNext.classList.add('shake-anim');
+                setTimeout(() => btnNext.classList.remove('shake-anim'), 300);
+                return;
+            }
+            
             if (currentSlideIndex === 2 && !dynamicSlidesGenerated) generateDynamicSlides();
             if (currentSlideIndex < totalSlides - 1) showSlide(currentSlideIndex + 1);
         }
@@ -517,19 +524,40 @@
             currentSelectedModules.forEach(moduleId => {
                 const mod = moduleData.find(m => m.id === moduleId);
                 currentRobotParts.push(moduleId); 
+                
+                let actionButtonsHtml = '';
+
+                if (moduleId === 'diagnosis') {
+                    actionButtonsHtml = `
+                        <p style="margin-bottom: 2vh;">Оношилгоо модулийн тусламжтайгаар та байгууллагад тулгарч буй асуудлуудыг бүртгэж, "5 Whys" аргачлалаар үндсэн шалтгааныг (Root cause) илрүүлэн, дахин давтагдахгүй байх арга хэмжээг төлөвлөх боломжтой.</p>
+                        <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; padding: 1.5vh; border-radius: 8px; margin-bottom: 2vh;">
+                            <p style="font-size: clamp(12px, 2vh, 15px); margin: 0; color: #b45309;">
+                                <i class="fa-solid fa-circle-info" style="margin-right: 5px;"></i> Энэхүү модульд одоогоор заавар бичлэг байхгүй бөгөөд та доорх товч дээр дарж AI багштай ярилцан дэлгэрэнгүй мэдээлэл авах боломжтой.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" onclick="openTheoryModal('${moduleId}')"><i class="fa-solid fa-sparkles"></i> Онол & AI Багштай ярилцах</button>
+                        </div>
+                    `;
+                } else {
+                    actionButtonsHtml = `
+                        <p style="margin-bottom: 3vh;">Дараах товчууд дээр дарж уг модулийг хэрхэн ашиглах заавар болон онолтой танилцана уу.</p>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="openVideoModal('${mod.title}')"><i class="fa-solid fa-play"></i> Заавар үзэх</button>
+                            <button class="btn btn-secondary" onclick="openTheoryModal('${moduleId}')"><i class="fa-solid fa-sparkles"></i> Онол & AI Багш</button>
+                        </div>
+                    `;
+                }
+
                 slideHtml += `
                 <div class="slide" id="slide-${slideIndexCount}">
                     <h2 class="slide-title">Хичээл: ${mod.title}</h2>
                     <div class="content-area">
                         <div class="two-column">
                             <div>
-                                <h3 style="font-size: clamp(20px, 3vh, 24px); margin-bottom: 1vh;">Энэ хэсгийг суулгаснаар:</h3>
+                                <h3 style="font-size: clamp(20px, 3vh, 24px); margin-bottom: 1vh;">Энэ хэсгийг сурснаар:</h3>
                                 <p style="margin-bottom: 2vh; font-weight: 700; color: #0ea5e9; font-size: clamp(16px, 2.5vh, 20px);">${mod.goal}</p>
-                                <p style="margin-bottom: 3vh;">Дараах товчууд дээр дарж уг модулийг хэрхэн ашиглах заавар болон онолтой танилцана уу.</p>
-                                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                                    <button class="btn btn-primary" onclick="openVideoModal('${mod.title}')"><i class="fa-solid fa-play"></i> Заавар үзэх</button>
-                                    <button class="btn btn-secondary" onclick="openTheoryModal('${moduleId}')"><i class="fa-solid fa-sparkles"></i> Онол & AI Багш</button>
-                                </div>
+                                ${actionButtonsHtml}
                             </div>
                             <div class="robot-display">${getRobotPreviewHtml(currentRobotParts)}</div>
                         </div>
@@ -692,6 +720,10 @@
 
             document.getElementById('ai-question-input').value = '';
             document.getElementById('theory-modal').classList.add('active');
+
+            // Үзсэн гэдгийг бүртгэх
+            watchedModules.add(moduleId);
+            updateNavigation();
         }
 
         function handleKeyPress(e) { if (e.key === 'Enter') askAITutor(); }
@@ -785,6 +817,12 @@
 
             videoContainer.innerHTML = contentHtml;
             document.getElementById('video-modal').classList.add('active');
+
+            // Үзсэн гэдгийг бүртгэх
+            let foundMod = moduleData.find(m => m.title === moduleTitle);
+            if (foundMod) watchedModules.add(foundMod.id);
+            else watchedModules.add(moduleTitle); // For 'Суурь тохиргоо'
+            updateNavigation();
         }
 
         function closeModal(modalId) {
